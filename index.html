@@ -161,7 +161,7 @@
 
 <!-- HUD -->
 <div id="hud" class="hidden">
-  <div class="hud-card">得分 <span id="score-num">0</span><span id="combo-tag"></span><br><span id="hud-diff" style="font-size:12px;color:#adb5bd"></span></div>
+  <div class="hud-card">得分 <span id="score-num">0</span><span style="font-size:12px;color:#adb5bd"> /100</span><span id="combo-tag"></span><br><span id="hud-diff" style="font-size:12px;color:#adb5bd"></span></div>
   <div class="hud-card" id="lives-row">
     <span id="lives">❤❤❤</span>
     <button id="btn-pause" title="暂停 (P)">⏸</button>
@@ -183,7 +183,7 @@
     <div class="howto">
       🖐 <b>按住并滑动</b>切开掉落的水果<br>
       🎯 每波顶部会指定一个目标分类，只切<b>属于该类</b>的科目水果<br>
-      ✅ 切对得分，连击越高得分越多<br>
+      ✅ <b>满分 100 分</b>：切对科目 +2（上限 60）、每 5 连击 +2（上限 20）、每完成一波 +2（上限 20）<br>
       ❌ 切错类别或切到 💣 炸弹扣一条命，共 3 条命<br>
       📚 漏掉的目标科目和切错的科目会在结算页<b>错题回顾</b>中列出
     </div>
@@ -218,6 +218,7 @@
       <div class="stat"><div class="v" id="r-acc">0%</div><div class="k">切割正确率</div></div>
       <div class="stat"><div class="v" id="r-wave">1</div><div class="k">到达波数</div></div>
     </div>
+    <div id="r-detail" style="font-size:13px;color:#adb5bd;margin-bottom:16px"></div>
     <div id="mist-title">📋 错题回顾</div>
     <div id="mist-empty">🎉 满分通关，无一错漏！</div>
     <table id="mist-table" class="hidden">
@@ -563,6 +564,7 @@ resize();
 let state = 'menu';          // menu | playing | over
 let paused = false;
 let score = 0, lives = 3, combo = 0, maxCombo = 0, correctCnt = 0, wrongCnt = 0;
+let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 100 分制：切对 60 / 连击 20 / 波次 20
 let wave = 0, waveTarget = null;
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
@@ -640,6 +642,7 @@ function wrapText(text, maxW) {  // 中文按宽度逐字断行
 /* ---------------- 波次与生成 ---------------- */
 function buildWave() {
   const D = DIFFS[diff];
+  transitionTimer = -1;
   wave++;
   waveTarget = pick(CAT_KEYS);
   const count = Math.min(D.countBase + Math.floor(wave / D.countDiv), D.countCap);
@@ -750,9 +753,15 @@ function onFruitSliced(f, a, b) {
   if (f.cat === waveTarget) {
     correctCnt++; combo++;
     maxCombo = Math.max(maxCombo, combo);
-    const gain = 10 + Math.min(combo, 10) * 2;
-    score += gain;
-    floaters.push({ x: f.x, y: f.y - f.r, text: `+${gain}`, color: '#69db7c', age: 0 });
+    if (scoreSlice < 60) {  // 切对得分，60 分封顶
+      scoreSlice = Math.min(60, scoreSlice + 2);
+      floaters.push({ x: f.x, y: f.y - f.r, text: '+2', color: '#69db7c', age: 0 });
+    }
+    if (combo % 5 === 0 && scoreCombo < 20) {  // 每 5 连击奖励，20 分封顶
+      scoreCombo = Math.min(20, scoreCombo + 2);
+      floaters.push({ x: f.x, y: f.y - f.r - 26, text: `🔥 ${combo} 连击 +2`, color: '#ffd43b', age: 0 });
+    }
+    score = scoreSlice + scoreCombo + scoreWave;
     sndCorrect();
   } else {
     wrongCnt++; combo = 0;
@@ -824,6 +833,12 @@ function update(dt) {
   // 波结束检测：队列空且场上无整果
   if (state === 'playing' && !spawnQueue.length && !fruits.length && transitionTimer < 0) {
     transitionTimer = 0.9;
+    if (scoreWave < 20) {  // 波次奖励
+      scoreWave = Math.min(20, scoreWave + 2);
+      floaters.push({ x: W / 2, y: H * 0.32, text: '🌊 波次完成 +2', color: '#4dabf7', age: 0 });
+    }
+    score = scoreSlice + scoreCombo + scoreWave;
+    updateHUD();
   }
 
   // 水果下落
@@ -1014,6 +1029,7 @@ function startGame(d) {
   ensureAudio();
   score = 0; lives = 3; combo = 0; maxCombo = 0;
   correctCnt = 0; wrongCnt = 0; wave = 0;
+  scoreSlice = 0; scoreCombo = 0; scoreWave = 0;
   fruits = []; halves = []; particles = []; floaters = []; trail = [];
   spawnQueue = []; transitionTimer = -1; shake = 0;
   mistakes = [];
@@ -1032,6 +1048,7 @@ function endGame() {
   // 填充结算
   $('r-score').textContent = score;
   $('r-combo').textContent = maxCombo;
+  $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/60 · 连击奖励 ${scoreCombo}/20 · 波次奖励 ${scoreWave}/20`;
   const total = correctCnt + wrongCnt;
   $('r-acc').textContent = total ? Math.round(correctCnt / total * 100) + '%' : '—';
   $('r-wave').textContent = wave;
