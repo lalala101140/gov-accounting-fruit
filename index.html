@@ -82,6 +82,28 @@
   .legend { display: flex; flex-wrap: wrap; gap: 7px 8px; justify-content: center; margin-bottom: 20px; }
   .legend .chip { font-size: 12.5px; padding: 3px 11px; border-radius: 999px; color: #fff; opacity: .95; }
   .legend .group { width: 100%; text-align: left; color: #868e96; font-size: 12px; margin-top: 4px; }
+  /* ---------- 难度选择 ---------- */
+  .diff-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 8px; }
+  .diff-card {
+    cursor: pointer; flex: 1; max-width: 150px;
+    border-radius: 16px; padding: 14px 6px 12px;
+    background: rgba(255,255,255,.06); color: #e9ecef;
+    border: 2px solid rgba(255,255,255,.14);
+    transition: transform .12s ease, box-shadow .12s ease;
+    font-family: inherit;
+  }
+  .diff-card:hover { transform: translateY(-4px); }
+  .diff-card .d-icon { font-size: 26px; }
+  .diff-card .d-name { font-size: 17px; font-weight: 800; letter-spacing: 3px; margin: 4px 0 3px; }
+  .diff-card .d-desc { font-size: 11.5px; color: #adb5bd; line-height: 1.5; }
+  .diff-card.easy:hover   { box-shadow: 0 8px 24px rgba(105,219,124,.35); border-color: #69db7c; }
+  .diff-card.normal:hover { box-shadow: 0 8px 24px rgba(77,171,247,.35); border-color: #4dabf7; }
+  .diff-card.hell:hover   { box-shadow: 0 8px 24px rgba(255,107,107,.4);  border-color: #ff6b6b; }
+  .diff-card.easy .d-name   { color: #69db7c; }
+  .diff-card.normal .d-name { color: #4dabf7; }
+  .diff-card.hell .d-name   { color: #ff6b6b; }
+  #diff-tip { font-size: 12px; color: #868e96; margin: 6px 0 16px; }
+
   .btn-main {
     cursor: pointer; border: none; border-radius: 14px;
     background: linear-gradient(135deg, #ff922b, #ff6b6b);
@@ -139,7 +161,7 @@
 
 <!-- HUD -->
 <div id="hud" class="hidden">
-  <div class="hud-card">得分 <span id="score-num">0</span><span id="combo-tag"></span></div>
+  <div class="hud-card">得分 <span id="score-num">0</span><span id="combo-tag"></span><br><span id="hud-diff" style="font-size:12px;color:#adb5bd"></span></div>
   <div class="hud-card" id="lives-row">
     <span id="lives">❤❤❤</span>
     <button id="btn-pause" title="暂停 (P)">⏸</button>
@@ -166,7 +188,12 @@
       📚 漏掉的目标科目和切错的科目会在结算页<b>错题回顾</b>中列出
     </div>
     <div class="legend" id="legend"></div>
-    <button class="btn-main" id="btn-start">开 始</button>
+    <div class="diff-row">
+      <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲<br>适合刚开始背科目</div></button>
+      <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度<br>熟悉后的挑战</div></button>
+      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">💀</div><div class="d-name">地狱</div><div class="d-desc">极速狂落<br>科目大师的考验</div></button>
+    </div>
+    <div id="diff-tip">👆 选择难度即刻开始（左上角会显示当前难度）</div>
     <div id="best-line"></div>
   </div>
 </div>
@@ -197,8 +224,8 @@
       <thead><tr><th>科目</th><th>正确分类</th><th>本局表现</th></tr></thead>
       <tbody id="mist-body"></tbody>
     </table>
-    <button class="btn-main" id="btn-retry">再来一局</button>
-    <button class="btn-ghost" id="btn-home">回主页</button>
+    <button class="btn-main" id="btn-retry">同难度再来一局</button>
+    <button class="btn-ghost" id="btn-home">回主页换难度</button>
   </div>
 </div>
 
@@ -318,18 +345,199 @@ const TOPICS = [
 const TOPICS_BY_CAT = {};
 CAT_KEYS.forEach(k => TOPICS_BY_CAT[k] = TOPICS.filter(t => t.c === k));
 
+/* ---------------- 手绘矢量水果（纯 Canvas 绘制，坐标系以果心为原点） ---------------- */
+function leafAt(x, y, len, wid, ang, color) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+  ctx.beginPath(); ctx.ellipse(0, 0, len, wid, 0, 0, Math.PI * 2);
+  ctx.fillStyle = color || '#66bb6a'; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+}
+function stemAt(x1, y1, x2, y2, w) {
+  ctx.strokeStyle = '#6d4c41'; ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo((x1 + x2) / 2 + w, (y1 + y2) / 2, x2, y2); ctx.stroke();
+}
+function shineAt(x, y, rx, ry, ang, a) {
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, ang == null ? -0.6 : ang, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,255,255,${a == null ? 0.45 : a})`; ctx.fill();
+}
+
+function drawApple(r) {
+  const g = ctx.createRadialGradient(-r * .3, -r * .35, r * .1, 0, r * .05, r * 1.05);
+  g.addColorStop(0, '#ff8a80'); g.addColorStop(1, '#b71c1c');
+  ctx.beginPath();
+  ctx.moveTo(0, -r * .75);
+  ctx.bezierCurveTo(-r * .2, -r * 1.0, -r * .95, -r * .75, -r * .9, -r * .05);
+  ctx.bezierCurveTo(-r * .85, r * .7, -r * .35, r * .95, 0, r * .9);
+  ctx.bezierCurveTo(r * .35, r * .95, r * .85, r * .7, r * .9, -r * .05);
+  ctx.bezierCurveTo(r * .95, -r * .75, r * .2, -r * 1.0, 0, -r * .75);
+  ctx.fillStyle = g; ctx.fill();
+  stemAt(0, -r * .78, r * .08, -r * 1.12, r * .1);
+  leafAt(r * .3, -r * 1.0, r * .3, r * .13, .55);
+  shineAt(-r * .35, -r * .25, r * .22, r * .11);
+}
+function drawOrange(r) {
+  const g = ctx.createRadialGradient(-r * .3, -r * .35, r * .1, 0, 0, r * 1.05);
+  g.addColorStop(0, '#ffb74d'); g.addColorStop(1, '#e65100');
+  ctx.beginPath(); ctx.arc(0, 0, r * .92, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.18)';
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * Math.PI * 2 + .5;
+    ctx.beginPath(); ctx.arc(Math.cos(a) * r * .55, Math.sin(a) * r * .5, r * .045, 0, Math.PI * 2); ctx.fill();
+  }
+  leafAt(-r * .08, -r * .88, r * .26, r * .11, -.7);
+  stemAt(0, -r * .85, 0, -r * .98, r * .08);
+  shineAt(-r * .33, -r * .3, r * .2, r * .1);
+}
+function drawLemon(r) {
+  const g = ctx.createRadialGradient(-r * .25, -r * .3, r * .1, 0, 0, r * 1.1);
+  g.addColorStop(0, '#fff59d'); g.addColorStop(1, '#f9a825');
+  ctx.beginPath(); ctx.ellipse(0, 0, r * .95, r * .68, 0, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r * .93, 0, r * .15, r * .1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-r * .93, 0, r * .15, r * .1, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.beginPath(); ctx.arc(-r * .2, -r * .12, r * .05, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r * .18, r * .12, r * .04, 0, Math.PI * 2); ctx.fill();
+  shineAt(-r * .3, -r * .18, r * .18, r * .07);
+}
+function drawWatermelon(r) {
+  ctx.beginPath(); ctx.arc(0, 0, r * .95, 0, Math.PI * 2); ctx.fillStyle = '#2e7d32'; ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(0, 0, r * .95, 0, Math.PI * 2); ctx.clip();
+  ctx.strokeStyle = '#1b5e20'; ctx.lineWidth = r * .09;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.moveTo(i * r * .38, -r); ctx.lineTo(i * r * .38, r); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(0, 0, r * .82, 0, Math.PI * 2); ctx.fillStyle = '#a5d6a7'; ctx.fill();
+  const g = ctx.createRadialGradient(-r * .2, -r * .2, r * .1, 0, 0, r * .8);
+  g.addColorStop(0, '#ff6b6b'); g.addColorStop(1, '#d32f2f');
+  ctx.beginPath(); ctx.arc(0, 0, r * .74, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = '#1a1a1a';
+  [[0, -.32], [-.27, -.08], [.27, -.08], [-.16, .24], [.16, .24], [0, .48]].forEach(([x, y]) => {
+    ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(Math.atan2(y, x));
+    ctx.beginPath(); ctx.ellipse(0, 0, r * .04, r * .07, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  });
+  shineAt(-r * .3, -r * .38, r * .16, r * .08, -.6, .3);
+}
+function drawGrapes(r) {
+  stemAt(0, -r * .55, 0, -r * .95, r * .09);
+  leafAt(r * .24, -r * .85, r * .28, r * .12, .5);
+  [[0, -.45], [-.32, -.15], [.32, -.15], [-.18, .2], [.18, .2], [0, .55]].forEach(([x, y]) => {
+    const g = ctx.createRadialGradient(x * r - r * .08, y * r - r * .08, r * .02, x * r, y * r, r * .3);
+    g.addColorStop(0, '#ce93d8'); g.addColorStop(1, '#6a1b9a');
+    ctx.beginPath(); ctx.arc(x * r, y * r, r * .28, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.stroke();
+  });
+  shineAt(-r * .42, -r * .42, r * .1, r * .05, -.5, .55);
+}
+function drawStrawberry(r) {
+  const g = ctx.createRadialGradient(-r * .25, -r * .2, r * .08, 0, 0, r * 1.05);
+  g.addColorStop(0, '#f48fb1'); g.addColorStop(1, '#c2185b');
+  ctx.beginPath();
+  ctx.moveTo(0, r * .95);
+  ctx.bezierCurveTo(-r * .9, r * .35, -r * .85, -r * .6, 0, -r * .55);
+  ctx.bezierCurveTo(r * .85, -r * .6, r * .9, r * .35, 0, r * .95);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = '#ffe082';
+  [[0, -.1], [-.25, .05], [.25, .05], [-.15, .35], [.15, .35], [0, .6], [-.3, -.28], [.3, -.28]].forEach(([x, y]) => {
+    ctx.beginPath(); ctx.ellipse(x * r, y * r, r * .03, r * .05, 0, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.fillStyle = '#43a047';
+  [[-.45, -.6, -1.9], [0, -.68, 0], [.45, -.6, 1.9]].forEach(([x, y, a]) => {
+    ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(0, -r * .3);
+    ctx.quadraticCurveTo(r * .12, 0, 0, r * .06);
+    ctx.quadraticCurveTo(-r * .12, 0, 0, -r * .3);
+    ctx.fill(); ctx.restore();
+  });
+  stemAt(0, -r * .6, r * .05, -r * .88, r * .07);
+  shineAt(-r * .3, -r * .1, r * .14, r * .07, -.5);
+}
+function drawPeach(r) {
+  const g = ctx.createRadialGradient(-r * .3, -r * .3, r * .1, 0, 0, r * 1.05);
+  g.addColorStop(0, '#ffd54f'); g.addColorStop(.55, '#ffab91'); g.addColorStop(1, '#e64a19');
+  ctx.beginPath(); ctx.arc(0, 0, r * .92, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(183,28,28,.45)'; ctx.lineWidth = r * .05; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -r * .85); ctx.quadraticCurveTo(-r * .25, 0, 0, r * .88); ctx.stroke();
+  leafAt(r * .2, -r * .85, r * .28, r * .12, .5);
+  stemAt(0, -r * .88, 0, -r * .98, r * .07);
+  shineAt(-r * .35, -r * .28, r * .2, r * .1);
+}
+function drawKiwi(r) {
+  ctx.save(); ctx.rotate(.3);
+  ctx.beginPath(); ctx.ellipse(0, 0, r * .95, r * .75, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#8d6e63'; ctx.fill();
+  ctx.strokeStyle = 'rgba(62,39,35,.6)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2;
+    const x = Math.cos(a) * r * .93, y = Math.sin(a) * r * .72;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x * 1.05, y * 1.08); ctx.stroke();
+  }
+  const g = ctx.createRadialGradient(0, 0, r * .1, 0, 0, r * .85);
+  g.addColorStop(0, '#e6ee9c'); g.addColorStop(.4, '#aed581'); g.addColorStop(1, '#7cb342');
+  ctx.beginPath(); ctx.ellipse(0, 0, r * .85, r * .66, 0, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, r * .22, r * .17, 0, 0, Math.PI * 2); ctx.fillStyle = '#f1f8e9'; ctx.fill();
+  ctx.fillStyle = '#212121';
+  for (let i = 0; i < 10; i++) {
+    const a = i / 10 * Math.PI * 2;
+    ctx.beginPath(); ctx.ellipse(Math.cos(a) * r * .42, Math.sin(a) * r * .33, r * .035, r * .05, a, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawPineapple(r) {
+  ctx.fillStyle = '#2e7d32';
+  [[-.26, -1.12, -.5], [0, -1.22, 0], [.26, -1.12, .5]].forEach(([x, y, a]) => {
+    ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(r * .13, -r * .3, 0, -r * .55);
+    ctx.quadraticCurveTo(-r * .13, -r * .3, 0, 0);
+    ctx.fill(); ctx.restore();
+  });
+  const g = ctx.createRadialGradient(-r * .25, -r * .2, r * .1, 0, r * .15, r * 1.1);
+  g.addColorStop(0, '#ffe082'); g.addColorStop(1, '#ef6c00');
+  ctx.beginPath(); ctx.ellipse(0, r * .15, r * .75, r * .88, 0, 0, Math.PI * 2);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(0, r * .15, r * .75, r * .88, 0, 0, Math.PI * 2); ctx.clip();
+  ctx.strokeStyle = 'rgba(230,81,0,.5)'; ctx.lineWidth = r * .04;
+  for (let i = -5; i <= 5; i++) {
+    ctx.beginPath(); ctx.moveTo(i * r * .25 - r, -r); ctx.lineTo(i * r * .25 + r, r * 1.4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i * r * .25 + r, -r); ctx.lineTo(i * r * .25 - r, r * 1.4); ctx.stroke();
+  }
+  ctx.restore();
+  shineAt(-r * .28, -r * .15, r * .15, r * .09, -.6, .4);
+}
+function drawCoconut(r) {
+  const g = ctx.createRadialGradient(-r * .3, -r * .35, r * .1, 0, 0, r * 1.05);
+  g.addColorStop(0, '#a1887f'); g.addColorStop(1, '#3e2723');
+  ctx.beginPath(); ctx.arc(0, 0, r * .92, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(215,204,200,.25)'; ctx.lineWidth = r * .035; ctx.lineCap = 'round';
+  [[-.5, .32, .4], [0, .45, 0], [.5, .32, -.4]].forEach(([x, y, a]) => {
+    ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(-r * .3, 0); ctx.quadraticCurveTo(0, r * .08, r * .3, 0); ctx.stroke();
+    ctx.restore();
+  });
+  ctx.fillStyle = '#1a1a1a';
+  [[-.18, -.55], [.18, -.55], [0, -.38]].forEach(([x, y]) => {
+    ctx.beginPath(); ctx.arc(x * r, y * r, r * .06, 0, Math.PI * 2); ctx.fill();
+  });
+  shineAt(-r * .35, -r * .25, r * .16, r * .09, -.6, .3);
+}
+
 /* ---------------- 水果外观（颜色与类别无关，防止背外观） ---------------- */
 const FRUITS = [
-  { e: '🍎', c1: '#ff8a80', c2: '#c62828' },
-  { e: '🍊', c1: '#ffcc80', c2: '#ef6c00' },
-  { e: '🍋', c1: '#fff59d', c2: '#f9a825' },
-  { e: '🍉', c1: '#a5d6a7', c2: '#2e7d32' },
-  { e: '🍇', c1: '#ce93d8', c2: '#6a1b9a' },
-  { e: '🍓', c1: '#f48fb1', c2: '#ad1457' },
-  { e: '🍑', c1: '#ffab91', c2: '#d84315' },
-  { e: '🥝', c1: '#c5e1a5', c2: '#558b2f' },
-  { e: '🍍', c1: '#ffe082', c2: '#ff8f00' },
-  { e: '🥥', c1: '#bcaaa4', c2: '#4e342e' },
+  { flesh: '#fff3d6', juice: ['#ff8a80', '#c62828', '#ffcdd2'], draw: drawApple },
+  { flesh: '#ffb74d', juice: ['#ffb74d', '#ef6c00', '#ffe0b2'], draw: drawOrange },
+  { flesh: '#fff9c4', juice: ['#fff176', '#f9a825', '#ffe082'], draw: drawLemon },
+  { flesh: '#ef5350', juice: ['#ef5350', '#2e7d32', '#ff8a80'], draw: drawWatermelon },
+  { flesh: '#dcedc8', juice: ['#9575cd', '#6a1b9a', '#b39ddb'], draw: drawGrapes },
+  { flesh: '#ffccd5', juice: ['#f06292', '#ad1457', '#f8bbd0'], draw: drawStrawberry },
+  { flesh: '#ffe0b2', juice: ['#ffab91', '#d84315', '#ffccbc'], draw: drawPeach },
+  { flesh: '#aed581', juice: ['#aed581', '#558b2f', '#c5e1a5'], draw: drawKiwi },
+  { flesh: '#ffe082', juice: ['#ffd54f', '#ff8f00', '#fff3c4'], draw: drawPineapple },
+  { flesh: '#f5f5f5', juice: ['#bcaaa4', '#4e342e', '#d7ccc8'], draw: drawCoconut },
 ];
 
 /* ---------------- DOM 引用 ---------------- */
@@ -363,9 +571,23 @@ let shake = 0;               // 屏幕震动强度
 let mistakes = [];           // 错题记录
 let lastT = performance.now();
 
-const BEST_KEY = 'gov-accounting-fruit-best';
-function getBest() { return +(localStorage.getItem(BEST_KEY) || 0); }
-function setBest(v) { localStorage.setItem(BEST_KEY, v); }
+/* ---------------- 难度参数 ---------------- */
+const DIFFS = {
+  easy:   { label: '🌿 简单', vyMin: 55,  vyMax: 95,  vyAdd: 6,  vyCap: 240, g: 55,  sway: 12,
+            countBase: 4, countDiv: 3, countCap: 7,  gapBase: 950, gapDec: 15, gapMin: 650,
+            tpBase: .50, tpAdd: .01, tpCap: .60, bombWave: 6, bombBase: .04, bombAdd: .004, bombCap: .08 },
+  normal: { label: '🔥 进阶', vyMin: 80,  vyMax: 130, vyAdd: 10, vyCap: 380, g: 80,  sway: 22,
+            countBase: 5, countDiv: 2, countCap: 10, gapBase: 760, gapDec: 28, gapMin: 380,
+            tpBase: .38, tpAdd: .02, tpCap: .55, bombWave: 3, bombBase: .05, bombAdd: .008, bombCap: .15 },
+  hell:   { label: '💀 地狱', vyMin: 130, vyMax: 180, vyAdd: 20, vyCap: 480, g: 110, sway: 35,
+            countBase: 6, countDiv: 1.5, countCap: 13, gapBase: 560, gapDec: 30, gapMin: 200,
+            tpBase: .34, tpAdd: .015, tpCap: .50, bombWave: 2, bombBase: .07, bombAdd: .01, bombCap: .20 },
+};
+let diff = localStorage.getItem('gov-fruit-diff') || 'normal';
+
+const bestKey = () => 'gov-fruit-best-' + diff;
+function getBest() { return +(localStorage.getItem(bestKey()) || 0); }
+function setBest(v) { localStorage.setItem(bestKey(), v); }
 
 /* ---------------- 音效（WebAudio 合成，无外部资源） ---------------- */
 let actx = null;
@@ -417,11 +639,12 @@ function wrapText(text, maxW) {  // 中文按宽度逐字断行
 
 /* ---------------- 波次与生成 ---------------- */
 function buildWave() {
+  const D = DIFFS[diff];
   wave++;
   waveTarget = pick(CAT_KEYS);
-  const count = Math.min(5 + Math.floor(wave / 2), 10);
-  const bombP = wave >= 3 ? Math.min(0.05 + wave * 0.008, 0.15) : 0;
-  const targetP = Math.min(0.38 + wave * 0.02, 0.55);
+  const count = Math.min(D.countBase + Math.floor(wave / D.countDiv), D.countCap);
+  const bombP = wave >= D.bombWave ? Math.min(D.bombBase + wave * D.bombAdd, D.bombCap) : 0;
+  const targetP = Math.min(D.tpBase + wave * D.tpAdd, D.tpCap);
   const list = [waveTarget, waveTarget];  // 每波保底 2 个目标科目
   for (let i = 2; i < count; i++) {
     const r = Math.random();
@@ -439,16 +662,18 @@ function buildWave() {
   }
   spawnQueue = list;
   spawnTimer = 0.4;
-  spawnGap = Math.max(380, 760 - wave * 28);
+  spawnGap = Math.max(D.gapMin, D.gapBase - wave * D.gapDec);
   showBanner();
   sndWave();
 }
 
 function spawnFruit(spec) {
+  const D = DIFFS[diff];
   const r = spec === 'bomb' ? 46 : rand(44, 52);
   const f = {
     x: rand(r + 20, W - r - 20), y: -r - 10,
-    vx: rand(-40, 40), vy: rand(80, 130) + Math.min(wave * 10, 160),
+    vx: rand(-40, 40),
+    vy: Math.min(rand(D.vyMin, D.vyMax) + wave * D.vyAdd, D.vyCap),
     r, sliced: false, bomb: spec === 'bomb',
     phase: rand(0, Math.PI * 2), born: performance.now(),
   };
@@ -521,7 +746,7 @@ function trySlice(a, b) {
 
 function onFruitSliced(f, a, b) {
   spawnHalves(f, a, b);
-  spawnJuice(f.x, f.y, f.look.c1, f.look.c2, 18);
+  spawnJuice(f.x, f.y, f.look.juice[0], f.look.juice[1], 18);
   if (f.cat === waveTarget) {
     correctCnt++; combo++;
     maxCombo = Math.max(maxCombo, combo);
@@ -602,10 +827,11 @@ function update(dt) {
   }
 
   // 水果下落
+  const D = DIFFS[diff];
   for (let i = fruits.length - 1; i >= 0; i--) {
     const f = fruits[i];
-    f.vy = Math.min(f.vy + 80 * dt, 380);
-    f.x += (f.vx + Math.sin(performance.now() / 900 + f.phase) * 22) * dt;
+    f.vy = Math.min(f.vy + D.g * dt, D.vyCap);
+    f.x += (f.vx + Math.sin(performance.now() / 900 + f.phase) * D.sway) * dt;
     f.y += f.vy * dt;
     if (f.x < f.r) { f.x = f.r; f.vx = Math.abs(f.vx); }
     if (f.x > W - f.r) { f.x = W - f.r; f.vx = -Math.abs(f.vx); }
@@ -668,15 +894,7 @@ function drawFruit(f) {
     ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 3;
     ctx.strokeText('炸弹', 0, r * 0.62); ctx.fillText('炸弹', 0, r * 0.62);
   } else {
-    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.15, 0, 0, r);
-    g.addColorStop(0, f.look.c1); g.addColorStop(1, f.look.c2);
-    ctx.beginPath(); ctx.arc(0, 0, r - 3, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-    // 高光
-    ctx.beginPath(); ctx.ellipse(-r * 0.38, -r * 0.42, r * 0.22, r * 0.13, -0.6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fill();
-    // emoji 小图
-    ctx.font = `${r * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(f.look.e, 0, -r * 0.42);
+    f.look.draw(r);
     // 科目文字（最多两行）
     ctx.font = `bold ${Math.max(13, r * 0.27)}px sans-serif`;
     const lines = wrapText(f.topic, r * 1.7);
@@ -698,22 +916,18 @@ function drawHalf(h) {
   ctx.rotate(h.rot);
   const r = h.r, a0 = h.side === 'l' ? Math.PI / 2 : -Math.PI / 2;
   ctx.beginPath();
-  ctx.arc(0, 0, r - 3, a0, a0 + Math.PI);
+  ctx.arc(0, 0, r, a0, a0 + Math.PI);
   ctx.closePath();
   ctx.save();
   ctx.clip();
-  const g = ctx.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.15, 0, 0, r);
-  g.addColorStop(0, h.look.c1); g.addColorStop(1, h.look.c2);
-  ctx.fillStyle = g;
-  ctx.fillRect(-r, -r, r * 2, r * 2);
-  ctx.font = `${r * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(h.look.e, 0, -r * 0.42);
+  h.look.draw(r);          // 画出被裁一半的整果
+  // 果肉切面（沿直径露出果肉色）
+  const off = h.side === 'l' ? -r * .05 : r * .05;
+  ctx.strokeStyle = h.look.flesh; ctx.lineWidth = r * .18; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(off, -r * .72); ctx.lineTo(off, r * .72); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = r * .05;
+  ctx.beginPath(); ctx.moveTo(off, -r * .72); ctx.lineTo(off, r * .72); ctx.stroke();
   ctx.restore();
-  // 切面线
-  ctx.beginPath();
-  ctx.moveTo(Math.cos(h.cutAng) * (r - 3), Math.sin(h.cutAng) * (r - 3));
-  ctx.lineTo(-Math.cos(h.cutAng) * (r - 3), -Math.sin(h.cutAng) * (r - 3));
-  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 3; ctx.stroke();
   ctx.restore();
 }
 
@@ -795,7 +1009,8 @@ function updateHUD() {
 }
 
 /* ---------------- 流程控制 ---------------- */
-function startGame() {
+function startGame(d) {
+  if (d) { diff = d; localStorage.setItem('gov-fruit-diff', d); }
   ensureAudio();
   score = 0; lives = 3; combo = 0; maxCombo = 0;
   correctCnt = 0; wrongCnt = 0; wave = 0;
@@ -803,6 +1018,7 @@ function startGame() {
   spawnQueue = []; transitionTimer = -1; shake = 0;
   mistakes = [];
   state = 'playing'; paused = false;
+  $('hud-diff').textContent = DIFFS[diff].label;
   elMenu.classList.add('hidden'); elOver.classList.add('hidden');
   elHud.classList.remove('hidden'); elBanner.classList.remove('hidden');
   updateHUD();
@@ -846,10 +1062,10 @@ function endGame() {
     $('mist-table').classList.add('hidden');
     $('mist-empty').classList.remove('hidden');
   }
-  // 最高分
+  // 最高分（按难度分别记录）
   const best = getBest();
-  if (score > best) { setBest(score); $('best-line').textContent = `🏆 新纪录！最高分 ${score}`; }
-  else $('best-line').textContent = `历史最高分：${Math.max(best, score)}`;
+  if (score > best) { setBest(score); $('best-line').textContent = `🏆 新纪录！${DIFFS[diff].label} 最高分 ${score}`; }
+  else $('best-line').textContent = `${DIFFS[diff].label} 历史最高分：${Math.max(best, score)}`;
   setTimeout(() => elOver.classList.remove('hidden'), 500);
 }
 function goHome() {
@@ -861,13 +1077,14 @@ function goHome() {
 }
 
 function showBestOnMenu() {
-  const b = getBest();
-  $('best-line').textContent = b > 0 ? `🏆 历史最高分：${b}` : '';
+  $('best-line').textContent = ['easy', 'normal', 'hell']
+    .map(k => `${DIFFS[k].label} ${+(localStorage.getItem('gov-fruit-best-' + k) || 0)}`)
+    .join(' · ');
 }
 
 /* ---------------- 按钮 ---------------- */
-$('btn-start').addEventListener('click', startGame);
-$('btn-retry').addEventListener('click', startGame);
+document.querySelectorAll('.diff-card').forEach(b => b.addEventListener('click', () => startGame(b.dataset.diff)));
+$('btn-retry').addEventListener('click', () => startGame());
 $('btn-home').addEventListener('click', goHome);
 $('btn-resume').addEventListener('click', togglePause);
 $('btn-pause').addEventListener('click', togglePause);
