@@ -750,6 +750,17 @@ function trySlice(a, b) {
 function onFruitSliced(f, a, b) {
   spawnHalves(f, a, b);
   spawnJuice(f.x, f.y, f.look.juice[0], f.look.juice[1], 18);
+  // 果汁溅在菜板上留下渍痕，慢慢淡去
+  if (juiceMarks.length > 28) juiceMarks.shift();
+  juiceMarks.push({
+    x: f.x, y: f.y, t0: performance.now(), life: 9000,
+    color: f.look.juice[Math.random() < .5 ? 0 : 2],
+    blobs: Array.from({ length: 4 }, () => ({
+      x: f.x + (Math.random() * 48 - 24),
+      y: f.y + (Math.random() * 48 - 24),
+      r: 6 + Math.random() * 17
+    }))
+  });
   if (f.cat === waveTarget) {
     correctCnt++; combo++;
     maxCombo = Math.max(maxCombo, combo);
@@ -946,23 +957,108 @@ function drawHalf(h) {
   ctx.restore();
 }
 
+// ---- 木纹菜板背景 & 果汁渍 ----
+let boardCache = null, boardW = 0, boardH = 0;
+const juiceMarks = [];
+function rr(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+function buildBoard() {
+  boardW = W; boardH = H;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const b = c.getContext('2d');
+  // 厨房台面
+  const top = b.createLinearGradient(0, 0, 0, H);
+  top.addColorStop(0, '#41474f'); top.addColorStop(1, '#26292e');
+  b.fillStyle = top; b.fillRect(0, 0, W, H);
+  // 台面细微噪点
+  for (let i = 0; i < 260; i++) {
+    b.fillStyle = `rgba(255,255,255,${Math.random() * .03})`;
+    b.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+  }
+  const m = Math.min(W, H) * .045, rad = 28;
+  // 菜板投影
+  b.save();
+  b.shadowColor = 'rgba(0,0,0,.55)'; b.shadowBlur = 34; b.shadowOffsetY = 14;
+  b.fillStyle = '#c89b66'; rr(b, m, m, W - m * 2, H - m * 2, rad); b.fill();
+  b.restore();
+  // 菜板木色渐变
+  const wg = b.createLinearGradient(m, m, W - m, H - m);
+  wg.addColorStop(0, '#dcb478'); wg.addColorStop(.5, '#cda05f'); wg.addColorStop(1, '#ba8b4e');
+  rr(b, m, m, W - m * 2, H - m * 2, rad); b.fillStyle = wg; b.fill();
+  // 菜板内裁剪后画木纹
+  b.save();
+  rr(b, m, m, W - m * 2, H - m * 2, rad); b.clip();
+  const plank = Math.max(95, W / 9);
+  for (let x = m; x < W - m; x += plank) {
+    b.fillStyle = `rgba(120,72,28,${.06 + Math.random() * .07})`;   // 板缝
+    b.fillRect(x, m, 2.2, H - m * 2);
+    for (let i = 0; i < 8; i++) {                                   // 木纹曲线
+      const y0 = m + Math.random() * (H - m * 2);
+      b.strokeStyle = `rgba(255,236,200,${.05 + Math.random() * .07})`;
+      b.lineWidth = 1 + Math.random() * 1.6;
+      b.beginPath(); b.moveTo(x + 4, y0);
+      b.bezierCurveTo(x + plank * .3, y0 + (Math.random() * 44 - 22), x + plank * .7, y0 + (Math.random() * 44 - 22), x + plank - 4, y0 + (Math.random() * 32 - 16));
+      b.stroke();
+      b.strokeStyle = `rgba(110,66,25,${.04 + Math.random() * .09})`;
+      b.beginPath(); b.moveTo(x + 4, y0 + 9);
+      b.bezierCurveTo(x + plank * .35, y0 + 9 + (Math.random() * 40 - 20), x + plank * .65, y0 + 9 + (Math.random() * 40 - 20), x + plank - 4, y0 + 11);
+      b.stroke();
+    }
+    if (Math.random() < .75) {                                      // 木结
+      const kx = x + plank * (.22 + Math.random() * .55), ky = m + 40 + Math.random() * (H - m * 2 - 80);
+      for (let k = 3; k >= 1; k--) {
+        b.beginPath(); b.ellipse(kx, ky, k * 5.5, k * 3.2, Math.random() * .8, 0, Math.PI * 2);
+        b.strokeStyle = `rgba(96,56,20,${.15 * (4 - k)})`; b.lineWidth = 2; b.stroke();
+      }
+      b.beginPath(); b.ellipse(kx, ky, 4, 2.4, 0, 0, Math.PI * 2);
+      b.fillStyle = 'rgba(80,45,15,.42)'; b.fill();
+    }
+  }
+  // 使用磨损感：中部更亮、四周略暗
+  const wear = b.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * .62);
+  wear.addColorStop(0, 'rgba(255,242,214,.13)'); wear.addColorStop(1, 'rgba(88,50,12,.12)');
+  b.fillStyle = wear; b.fillRect(0, 0, W, H);
+  // 挂孔
+  b.beginPath(); b.arc(W / 2, m + 24, 11, 0, Math.PI * 2); b.fillStyle = '#26292e'; b.fill();
+  b.beginPath(); b.arc(W / 2, m + 24, 11, 0, Math.PI * 2);
+  b.strokeStyle = 'rgba(70,40,12,.65)'; b.lineWidth = 3; b.stroke();
+  b.restore();
+  // 菜板边缘立体感
+  b.strokeStyle = 'rgba(255,230,190,.35)'; b.lineWidth = 2;
+  rr(b, m + 1, m + 1, W - m * 2 - 2, H - m * 2 - 2, rad); b.stroke();
+  b.strokeStyle = 'rgba(58,32,8,.5)'; b.lineWidth = 3;
+  rr(b, m - 1, m - 1, W - m * 2 + 2, H - m * 2 + 2, rad + 1); b.stroke();
+  boardCache = c;
+}
+
 function render() {
   ctx.clearRect(0, 0, W, H);
-  // 背景
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#182635'); bg.addColorStop(1, '#0c1118');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  // 装饰光晕
-  const t = performance.now() / 1000;
-  for (let i = 0; i < 3; i++) {
-    const gx = W * (0.2 + 0.3 * i) + Math.sin(t * 0.3 + i * 2) * 60;
-    const gy = H * (0.25 + 0.22 * i);
-    const rad = Math.min(W, H) * 0.32;
-    const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
-    glow.addColorStop(0, ['rgba(255,107,107,.05)', 'rgba(77,171,247,.05)', 'rgba(99,230,190,.04)'][i]);
-    glow.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  // 背景：木质菜板
+  if (!boardCache || boardW !== W || boardH !== H) buildBoard();
+  ctx.drawImage(boardCache, 0, 0);
+  // 果汁渍（随时间慢慢淡去）
+  const now = performance.now();
+  for (let i = juiceMarks.length - 1; i >= 0; i--) {
+    const s = juiceMarks[i], age = now - s.t0;
+    if (age > s.life) { juiceMarks.splice(i, 1); continue; }
+    ctx.globalAlpha = .34 * (1 - age / s.life);
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    for (const bl of s.blobs) { ctx.moveTo(bl.x + bl.r, bl.y); ctx.arc(bl.x, bl.y, bl.r, 0, Math.PI * 2); }
+    ctx.fill();
   }
+  ctx.globalAlpha = 1;
+  // 顶部厨房顶灯柔光
+  const lamp = ctx.createRadialGradient(W / 2, -H * .1, 0, W / 2, -H * .1, H * .8);
+  lamp.addColorStop(0, 'rgba(255,246,225,.10)'); lamp.addColorStop(1, 'transparent');
+  ctx.fillStyle = lamp; ctx.fillRect(0, 0, W, H);
 
   ctx.save();
   if (shake > 0) ctx.translate(rand(-shake, shake), rand(-shake, shake));
