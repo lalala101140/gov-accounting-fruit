@@ -173,6 +173,21 @@
   }
   #flash.on { opacity: 1; }
 
+  /* ---------- 手机竖屏提示 ---------- */
+  #rotate-tip {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: linear-gradient(165deg, #3d2a14, #241705);
+    color: #fff; flex-direction: column; gap: 12px;
+    align-items: center; justify-content: center; text-align: center;
+  }
+  #rotate-tip .r-icon { font-size: 60px; animation: rot 1.6s ease-in-out infinite; }
+  #rotate-tip .r-big { font-size: 22px; font-weight: 800; letter-spacing: 4px; }
+  #rotate-tip .r-small { font-size: 14px; opacity: .75; }
+  @keyframes rot { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+  @media (max-width: 820px) and (orientation: portrait) {
+    #rotate-tip { display: flex; }
+  }
+
   @media (max-width: 640px) {
     #banner .cat-line { font-size: 22px; }
     .panel { padding: 22px 20px; }
@@ -183,6 +198,13 @@
 <body>
 
 <canvas id="cv"></canvas>
+
+<!-- 手机竖屏提示 -->
+<div id="rotate-tip">
+  <div class="r-icon">📱</div>
+  <div class="r-big">请横屏游玩</div>
+  <div class="r-small">旋转手机，切水果更顺手</div>
+</div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
