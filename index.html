@@ -47,7 +47,7 @@
   #banner .cat-line {
     font-size: 30px; font-weight: 800; letter-spacing: 4px;
     margin-top: 2px; padding: 4px 22px; border-radius: 999px;
-    background: rgba(13,17,23,.5); display: inline-block;
+    background: rgba(62,39,15,.6); display: inline-block;
   }
   #banner .sub-line { font-size: 12px; opacity: .75; margin-top: 3px; }
   @keyframes bannerPop {
@@ -57,86 +57,111 @@
   }
   #banner.pop { animation: bannerPop .45s ease-out; }
 
-  /* ---------- 覆盖层通用 ---------- */
+  /* ---------- 覆盖层通用（暖色厨房风） ---------- */
   .overlay {
     position: fixed; inset: 0; z-index: 10;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(5, 8, 12, .72); backdrop-filter: blur(8px);
+    background: rgba(48, 30, 12, .42); backdrop-filter: blur(7px);
   }
   .panel {
     width: min(560px, 92vw); max-height: 90vh; overflow-y: auto;
-    background: linear-gradient(160deg, #1c2735, #131a24);
-    border: 1px solid rgba(255,255,255,.14); border-radius: 20px;
-    padding: 30px 34px; color: #e9ecef; text-align: center;
-    box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    background: linear-gradient(165deg, #fff9ec, #f7ecd8);
+    border: 1px solid rgba(160, 110, 55, .35); border-radius: 22px;
+    padding: 30px 34px; color: #4e342e; text-align: center;
+    box-shadow: 0 24px 70px rgba(60, 35, 10, .45);
   }
-  .panel h1 { font-size: 34px; letter-spacing: 6px; margin-bottom: 4px; }
-  .panel h1 .accent { color: #ff6b6b; }
-  .panel .tagline { color: #adb5bd; font-size: 14px; margin-bottom: 18px; }
+  .panel h1 { font-size: 34px; letter-spacing: 6px; margin-bottom: 4px; color: #4e342e; }
+  .panel h1 .accent { color: #e8590c; }
+  .panel .tagline { color: #a1785a; font-size: 14px; margin-bottom: 18px; }
   .howto {
-    text-align: left; background: rgba(255,255,255,.05);
+    text-align: left; background: #fdf3df;
+    border: 1px dashed rgba(178, 128, 78, .5);
     border-radius: 12px; padding: 14px 18px; font-size: 14px; line-height: 1.9;
-    color: #ced4da; margin-bottom: 18px;
+    color: #6d4c41; margin-bottom: 18px;
   }
-  .howto b { color: #ffd43b; }
+  .howto b { color: #d9480f; }
   .legend { display: flex; flex-wrap: wrap; gap: 7px 8px; justify-content: center; margin-bottom: 20px; }
   .legend .chip { font-size: 12.5px; padding: 3px 11px; border-radius: 999px; color: #fff; opacity: .95; }
-  .legend .group { width: 100%; text-align: left; color: #868e96; font-size: 12px; margin-top: 4px; }
+  .legend .group { width: 100%; text-align: left; color: #a1785a; font-size: 12px; margin-top: 4px; }
   /* ---------- 难度选择 ---------- */
   .diff-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 8px; }
   .diff-card {
     cursor: pointer; flex: 1; max-width: 150px;
     border-radius: 16px; padding: 14px 6px 12px;
-    background: rgba(255,255,255,.06); color: #e9ecef;
-    border: 2px solid rgba(255,255,255,.14);
+    background: #fffdf6; color: #4e342e;
+    border: 2px solid rgba(178, 128, 78, .4);
     transition: transform .12s ease, box-shadow .12s ease;
     font-family: inherit;
   }
   .diff-card:hover { transform: translateY(-4px); }
   .diff-card .d-icon { font-size: 26px; }
   .diff-card .d-name { font-size: 17px; font-weight: 800; letter-spacing: 3px; margin: 4px 0 3px; }
-  .diff-card .d-desc { font-size: 11.5px; color: #adb5bd; line-height: 1.5; }
+  .diff-card .d-desc { font-size: 11.5px; color: #a1785a; line-height: 1.5; }
   .diff-card.easy:hover   { box-shadow: 0 8px 24px rgba(105,219,124,.35); border-color: #69db7c; }
   .diff-card.normal:hover { box-shadow: 0 8px 24px rgba(77,171,247,.35); border-color: #4dabf7; }
   .diff-card.hell:hover   { box-shadow: 0 8px 24px rgba(255,107,107,.4);  border-color: #ff6b6b; }
-  .diff-card.easy .d-name   { color: #69db7c; }
-  .diff-card.normal .d-name { color: #4dabf7; }
-  .diff-card.hell .d-name   { color: #ff6b6b; }
-  #diff-tip { font-size: 12px; color: #868e96; margin: 6px 0 16px; }
+  .diff-card.easy .d-name   { color: #2f9e44; }
+  .diff-card.normal .d-name { color: #1971c2; }
+  .diff-card.hell .d-name   { color: #e03131; }
+  #diff-tip { font-size: 12px; color: #a1785a; margin: 6px 0 16px; }
 
   .btn-main {
     cursor: pointer; border: none; border-radius: 14px;
     background: linear-gradient(135deg, #ff922b, #ff6b6b);
     color: #fff; font-size: 19px; font-weight: 700; letter-spacing: 4px;
-    padding: 13px 52px; box-shadow: 0 8px 24px rgba(255,107,107,.35);
+    padding: 13px 52px; box-shadow: 0 8px 24px rgba(232, 89, 12, .3);
     transition: transform .12s ease;
   }
   .btn-main:hover { transform: translateY(-2px) scale(1.02); }
   .btn-ghost {
     cursor: pointer; border-radius: 12px; margin-left: 10px;
-    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
-    color: #ced4da; font-size: 15px; padding: 11px 26px;
+    background: rgba(178, 128, 78, .14); border: 1px solid rgba(178, 128, 78, .5);
+    color: #6d4c41; font-size: 15px; padding: 11px 26px;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,.2); }
+  .btn-ghost:hover { background: rgba(178, 128, 78, .28); }
 
   /* ---------- 结算 ---------- */
-  #stats { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; }
+  #stats { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
   .stat {
-    background: rgba(255,255,255,.06); border-radius: 12px;
+    background: #fdf3df; border-radius: 12px;
     padding: 10px 0; width: 108px;
   }
-  .stat .v { font-size: 24px; font-weight: 800; color: #ffd43b; }
-  .stat .k { font-size: 12px; color: #adb5bd; margin-top: 2px; }
-  #mist-title { text-align: left; font-size: 15px; font-weight: 700; color: #ffa8a8; margin: 6px 0 8px; }
+  .stat .v { font-size: 24px; font-weight: 800; color: #d9480f; }
+  .stat .k { font-size: 12px; color: #a1785a; margin-top: 2px; }
+  #r-player { font-size: 14px; color: #6d4c41; margin-bottom: 10px; }
+  #r-player b { color: #d9480f; }
+  #mist-title { text-align: left; font-size: 15px; font-weight: 700; color: #c92a2a; margin: 6px 0 8px; }
   #mist-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 18px; }
   #mist-table th {
-    color: #868e96; font-weight: 600; text-align: left;
-    padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,.14);
+    color: #a1785a; font-weight: 600; text-align: left;
+    padding: 5px 8px; border-bottom: 1px solid rgba(160, 110, 55, .4);
   }
-  #mist-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.06); text-align: left; }
+  #mist-table td { padding: 6px 8px; border-bottom: 1px solid rgba(160, 110, 55, .18); text-align: left; }
   #mist-table .tag { padding: 1px 8px; border-radius: 999px; color: #fff; font-size: 12px; white-space: nowrap; }
-  #mist-empty { color: #69db7c; font-size: 14px; margin-bottom: 18px; }
-  #best-line { color: #adb5bd; font-size: 13px; margin-top: 14px; }
+  #mist-empty { color: #2f9e44; font-size: 14px; margin-bottom: 18px; }
+  #best-line { color: #a1785a; font-size: 13px; margin-top: 14px; }
+  /* 昵称输入 */
+  .name-row { margin: 2px 0 16px; }
+  #player-name {
+    width: min(320px, 86%); padding: 11px 16px; font-size: 15px; font-family: inherit;
+    text-align: center; color: #4e342e; outline: none;
+    background: #fffdf6; border: 2px solid rgba(178, 128, 78, .45); border-radius: 999px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  #player-name:focus { border-color: #e8590c; box-shadow: 0 0 0 3px rgba(232, 89, 12, .18); }
+  #player-name::placeholder { color: #c5a583; }
+  /* 本机排行榜 */
+  #lb-title { text-align: left; font-size: 15px; font-weight: 700; color: #b35c00; margin: 4px 0 8px; }
+  #lb-list { text-align: left; margin-bottom: 18px; }
+  #lb-list .lb-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 10px; font-size: 13.5px; color: #6d4c41;
+  }
+  #lb-list .lb-item.me { background: #ffe8cc; font-weight: 700; }
+  #lb-list .lb-rank { width: 26px; color: #b35c00; font-weight: 800; }
+  #lb-list .lb-name { flex: 1; color: #4e342e; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lb-list .lb-diff { font-size: 12px; padding: 1px 9px; border-radius: 999px; color: #fff; white-space: nowrap; }
+  #lb-list .lb-score { font-weight: 800; color: #d9480f; }
 
   .hidden { display: none !important; }
 
@@ -188,6 +213,9 @@
       📚 漏掉的目标科目和切错的科目会在结算页<b>错题回顾</b>中列出
     </div>
     <div class="legend" id="legend"></div>
+    <div class="name-row">
+      <input id="player-name" maxlength="12" placeholder="🍅 输入你的昵称（用于记分）">
+    </div>
     <div class="diff-row">
       <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲<br>适合刚开始背科目</div></button>
       <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度<br>熟悉后的挑战</div></button>
@@ -218,7 +246,10 @@
       <div class="stat"><div class="v" id="r-acc">0%</div><div class="k">切割正确率</div></div>
       <div class="stat"><div class="v" id="r-wave">1</div><div class="k">到达波数</div></div>
     </div>
-    <div id="r-detail" style="font-size:13px;color:#adb5bd;margin-bottom:16px"></div>
+    <div id="r-player"></div>
+    <div id="r-detail" style="font-size:13px;color:#a1785a;margin-bottom:14px"></div>
+    <div id="lb-title">🏅 本机排行榜 TOP 5</div>
+    <div id="lb-list"></div>
     <div id="mist-title">📋 错题回顾</div>
     <div id="mist-empty">🎉 满分通关，无一错漏！</div>
     <table id="mist-table" class="hidden">
@@ -906,10 +937,16 @@ function drawFruit(f) {
   const sq = 1 + Math.sin((performance.now() - f.born) / 220) * 0.04;  // 轻微呼吸
   const r = f.r * sq;
   ctx.save();
+  // 菜板上的柔和椭圆投影（顶光效果）
+  const sy = f.y + r * .92;
+  ctx.save();
+  ctx.translate(f.x, sy); ctx.scale(1, .42);
+  const sg = ctx.createRadialGradient(0, 0, r * .12, 0, 0, r * 1.02);
+  sg.addColorStop(0, 'rgba(58,34,10,.30)'); sg.addColorStop(1, 'rgba(58,34,10,0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.arc(0, 0, r * 1.02, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
   ctx.translate(f.x, f.y);
-  // 阴影
-  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fill();
   if (f.bomb) {
     const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.2, 0, 0, r);
     g.addColorStop(0, '#868e96'); g.addColorStop(1, '#212529');
@@ -1175,6 +1212,22 @@ function endGame() {
     $('mist-table').classList.add('hidden');
     $('mist-empty').classList.remove('hidden');
   }
+  // 玩家名 + 本机排行榜
+  const name = ($('player-name').value.trim() || localStorage.getItem('gov-fruit-name') || '无名玩家').slice(0, 12);
+  $('r-player').innerHTML = `玩家：<b>${name.replace(/</g, '&lt;')}</b> · ${DIFFS[diff].label}难度`;
+  const DIF_COLOR = { easy: '#2f9e44', normal: '#1971c2', hell: '#e03131' };
+  const lb = JSON.parse(localStorage.getItem('gov-fruit-lb') || '[]');
+  const rec = { n: name, s: score, d: diff, t: Date.now() };
+  lb.push(rec);
+  lb.sort((a, b) => b.s - a.s);
+  localStorage.setItem('gov-fruit-lb', JSON.stringify(lb.slice(0, 30)));
+  $('lb-list').innerHTML = lb.slice(0, 5).map((r, i) => `
+    <div class="lb-item${r === rec ? ' me' : ''}">
+      <span class="lb-rank">${i + 1}</span>
+      <span class="lb-name">${r.n.replace(/</g, '&lt;')}</span>
+      <span class="lb-diff" style="background:${DIF_COLOR[r.d] || '#999'}">${DIFFS[r.d] ? DIFFS[r.d].label : r.d}</span>
+      <span class="lb-score">${r.s} 分</span>
+    </div>`).join('');
   // 最高分（按难度分别记录）
   const best = getBest();
   if (score > best) { setBest(score); $('best-line').textContent = `🏆 新纪录！${DIFFS[diff].label} 最高分 ${score}`; }
@@ -1194,6 +1247,11 @@ function showBestOnMenu() {
     .map(k => `${DIFFS[k].label} ${+(localStorage.getItem('gov-fruit-best-' + k) || 0)}`)
     .join(' · ');
 }
+
+/* ---------------- 玩家名 ---------------- */
+const nameInput = $('player-name');
+nameInput.value = localStorage.getItem('gov-fruit-name') || '';
+nameInput.addEventListener('input', () => localStorage.setItem('gov-fruit-name', nameInput.value.trim()));
 
 /* ---------------- 按钮 ---------------- */
 document.querySelectorAll('.diff-card').forEach(b => b.addEventListener('click', () => startGame(b.dataset.diff)));
