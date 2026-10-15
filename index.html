@@ -73,16 +73,11 @@
   .panel h1 { font-size: 34px; letter-spacing: 6px; margin-bottom: 4px; color: #4e342e; }
   .panel h1 .accent { color: #e8590c; }
   .panel .tagline { color: #a1785a; font-size: 14px; margin-bottom: 18px; }
-  .howto {
-    text-align: left; background: #fdf3df;
-    border: 1px dashed rgba(178, 128, 78, .5);
-    border-radius: 12px; padding: 14px 18px; font-size: 14px; line-height: 1.9;
-    color: #6d4c41; margin-bottom: 18px;
+  .rules-simple {
+    background: #fdf3df; border-radius: 12px; padding: 12px 16px;
+    font-size: 15px; line-height: 1.9; color: #6d4c41; margin-bottom: 16px;
   }
-  .howto b { color: #d9480f; }
-  .legend { display: flex; flex-wrap: wrap; gap: 7px 8px; justify-content: center; margin-bottom: 20px; }
-  .legend .chip { font-size: 12.5px; padding: 3px 11px; border-radius: 999px; color: #fff; opacity: .95; }
-  .legend .group { width: 100%; text-align: left; color: #a1785a; font-size: 12px; margin-top: 4px; }
+  .rules-simple b { color: #d9480f; }
   /* ---------- 难度选择 ---------- */
   .diff-row { display: flex; gap: 12px; justify-content: center; margin-bottom: 8px; }
   .diff-card {
@@ -150,6 +145,12 @@
   }
   #player-name:focus { border-color: #e8590c; box-shadow: 0 0 0 3px rgba(232, 89, 12, .18); }
   #player-name::placeholder { color: #c5a583; }
+  #player-name.shake { animation: shakeX .45s ease; border-color: #e03131; }
+  @keyframes shakeX {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+  }
   /* 本机排行榜 */
   #lb-title { text-align: left; font-size: 15px; font-weight: 700; color: #b35c00; margin: 4px 0 8px; }
   #lb-list { text-align: left; margin-bottom: 18px; }
@@ -173,38 +174,25 @@
   }
   #flash.on { opacity: 1; }
 
-  /* ---------- 手机竖屏提示 ---------- */
-  #rotate-tip {
-    display: none; position: fixed; inset: 0; z-index: 50;
-    background: linear-gradient(165deg, #3d2a14, #241705);
-    color: #fff; flex-direction: column; gap: 12px;
-    align-items: center; justify-content: center; text-align: center;
-  }
-  #rotate-tip .r-icon { font-size: 60px; animation: rot 1.6s ease-in-out infinite; }
-  #rotate-tip .r-big { font-size: 22px; font-weight: 800; letter-spacing: 4px; }
-  #rotate-tip .r-small { font-size: 14px; opacity: .75; }
-  @keyframes rot { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
-  @media (max-width: 820px) and (orientation: portrait) {
-    #rotate-tip { display: flex; }
-  }
-
+  /* ---------- 手机竖屏适配 ---------- */
   @media (max-width: 640px) {
     #banner .cat-line { font-size: 22px; }
-    .panel { padding: 22px 20px; }
-    .panel h1 { font-size: 26px; }
+    .panel { padding: 20px 18px; }
+    .panel h1 { font-size: 26px; letter-spacing: 3px; }
+    .diff-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .diff-card {
+      max-width: none; display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; text-align: left;
+    }
+    .diff-card .d-icon { font-size: 24px; }
+    .diff-card .d-name { margin: 0; font-size: 16px; }
+    .diff-card .d-desc { margin-left: auto; text-align: right; }
   }
 </style>
 </head>
 <body>
 
 <canvas id="cv"></canvas>
-
-<!-- 手机竖屏提示 -->
-<div id="rotate-tip">
-  <div class="r-icon">📱</div>
-  <div class="r-big">请横屏游玩</div>
-  <div class="r-small">旋转手机，切水果更顺手</div>
-</div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
@@ -227,23 +215,19 @@
   <div class="panel">
     <h1>政府会计 · <span class="accent">切水果</span></h1>
     <div class="tagline">切水果 × 会计科目分类复习</div>
-    <div class="howto">
-      🖐 <b>按住并滑动</b>切开掉落的水果<br>
-      🎯 每波顶部会指定一个目标分类，只切<b>属于该类</b>的科目水果<br>
-      ✅ <b>满分 100 分</b>：切对科目 +2（上限 60）、每 5 连击 +2（上限 20）、每完成一波 +2（上限 20）<br>
-      ❌ 切错类别或切到 💣 炸弹扣一条命，共 3 条命<br>
-      📚 漏掉的目标科目和切错的科目会在结算页<b>错题回顾</b>中列出
+    <div class="rules-simple">
+      🎯 每波指定一个分类，请切掉<b>属于该类</b>的科目<br>
+      🏆 总分 <b>100</b> 分 · 切错或切到炸弹会扣命
     </div>
-    <div class="legend" id="legend"></div>
     <div class="name-row">
-      <input id="player-name" maxlength="12" placeholder="🍅 输入你的昵称（用于记分）">
+      <input id="player-name" maxlength="12" placeholder="请输入昵称（必填）">
     </div>
     <div class="diff-row">
       <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲<br>适合刚开始背科目</div></button>
       <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度<br>熟悉后的挑战</div></button>
       <button class="diff-card hell"   data-diff="hell"><div class="d-icon">💀</div><div class="d-name">地狱</div><div class="d-desc">极速狂落<br>科目大师的考验</div></button>
     </div>
-    <div id="diff-tip">👆 选择难度即刻开始（左上角会显示当前难度）</div>
+    <div id="diff-tip">👆 点击难度即刻开始</div>
     <div id="best-line"></div>
   </div>
 </div>
@@ -725,7 +709,8 @@ function buildWave() {
 
 function spawnFruit(spec) {
   const D = DIFFS[diff];
-  const r = spec === 'bomb' ? 46 : rand(44, 52);
+  const narrow = W < 520;  // 竖屏窄屏：水果缩小，避免拥挤
+  const r = spec === 'bomb' ? (narrow ? 40 : 46) : (narrow ? rand(38, 45) : rand(44, 52));
   const f = {
     x: rand(r + 20, W - r - 20), y: -r - 10,
     vx: rand(-40, 40),
@@ -1179,7 +1164,17 @@ function updateHUD() {
 }
 
 /* ---------------- 流程控制 ---------------- */
+function requireName() {  // 昵称必填校验，通过返回 true
+  const v = nameInput.value.trim();
+  if (v) return true;
+  nameInput.classList.add('shake');
+  nameInput.focus();
+  setTimeout(() => nameInput.classList.remove('shake'), 500);
+  return false;
+}
+
 function startGame(d) {
+  if (state === 'menu' && !requireName()) return;  // 未填昵称不能开始
   if (d) { diff = d; localStorage.setItem('gov-fruit-diff', d); }
   ensureAudio();
   score = 0; lives = 3; combo = 0; maxCombo = 0;
@@ -1290,26 +1285,8 @@ function togglePause() {
   elPause.classList.toggle('hidden', !paused);
 }
 
-/* ---------------- 菜单图例 ---------------- */
-(function buildLegend() {
-  const lg = $('legend');
-  let lastGroup = '';
-  for (const k of CAT_KEYS) {
-    const c = CATS[k];
-    if (c.group !== lastGroup) {
-      lastGroup = c.group;
-      const g = document.createElement('div');
-      g.className = 'group';
-      g.textContent = `— ${lastGroup} —`;
-      lg.appendChild(g);
-    }
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.style.background = c.color + '33';
-    chip.style.boxShadow = `inset 0 0 0 1.5px ${c.color}`;
-    chip.textContent = c.label;
-    lg.appendChild(chip);
-  }
+/* ---------------- 菜单初始化 ---------------- */
+(function initMenu() {
   showBestOnMenu();
 })();
 </script>
