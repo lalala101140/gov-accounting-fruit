@@ -216,7 +216,7 @@
     <h1>政府会计 · <span class="accent">切水果</span></h1>
     <div class="tagline">切水果 × 会计科目分类复习</div>
     <div class="rules-simple">
-      🎯 每波指定一个分类，请切掉<b>属于该类</b>的科目<br>
+      🎯 共 8 关，每关指定一个分类（不重复），请切掉<b>属于该类</b>的科目<br>
       🏆 总分 <b>100</b> 分 · 切错或切到炸弹会扣命
     </div>
     <div class="name-row">
@@ -244,13 +244,13 @@
 <!-- 结算 -->
 <div id="over" class="overlay hidden">
   <div class="panel">
-    <h1>本局结束</h1>
-    <div class="tagline">错题都是送分题，再来一局就记住了</div>
+    <h1 id="over-title">本局结束</h1>
+    <div class="tagline" id="over-tagline">错题都是送分题，再来一局就记住了</div>
     <div id="stats">
       <div class="stat"><div class="v" id="r-score">0</div><div class="k">得分</div></div>
       <div class="stat"><div class="v" id="r-combo">0</div><div class="k">最大连击</div></div>
       <div class="stat"><div class="v" id="r-acc">0%</div><div class="k">切割正确率</div></div>
-      <div class="stat"><div class="v" id="r-wave">1</div><div class="k">到达波数</div></div>
+      <div class="stat"><div class="v" id="r-wave">1</div><div class="k">完成关数</div></div>
     </div>
     <div id="r-player"></div>
     <div id="r-detail" style="font-size:13px;color:#a1785a;margin-bottom:14px"></div>
@@ -289,6 +289,7 @@ const CATS = {
   bsurplus: { label: '预算结余', color: '#63e6be', group: '预算会计' },
 };
 const CAT_KEYS = Object.keys(CATS);
+const TOTAL_WAVES = CAT_KEYS.length;  // 8 个分类各一关，共 8 关
 
 /* ---------------- 科目题库（78 个） ---------------- */
 const TOPICS = [
@@ -602,7 +603,7 @@ let state = 'menu';          // menu | playing | over
 let paused = false;
 let score = 0, lives = 3, combo = 0, maxCombo = 0, correctCnt = 0, wrongCnt = 0;
 let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 100 分制：切对 60 / 连击 20 / 波次 20
-let wave = 0, waveTarget = null;
+let wave = 0, waveTarget = null, waveCats = [];
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
 let transitionTimer = -1;    // 波间过渡倒计时，-1 表示不在过渡
@@ -665,6 +666,14 @@ const sndWave    = () => playTone(440, 660, 0.18, 'triangle', 0.12);
 /* ---------------- 工具 ---------------- */
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 function randomTopicOf(cat) { return pick(TOPICS_BY_CAT[cat]); }
 function wrapText(text, maxW) {  // 中文按宽度逐字断行
   const lines = []; let cur = '';
@@ -681,7 +690,8 @@ function buildWave() {
   const D = DIFFS[diff];
   transitionTimer = -1;
   wave++;
-  waveTarget = pick(CAT_KEYS);
+  if (!waveCats.length) waveCats = shuffle(CAT_KEYS);
+  waveTarget = waveCats.shift();  // 同一局内每个分类只出现一次
   const count = Math.min(D.countBase + Math.floor(wave / D.countDiv), D.countCap);
   const bombP = wave >= D.bombWave ? Math.min(D.bombBase + wave * D.bombAdd, D.bombCap) : 0;
   const targetP = Math.min(D.tpBase + wave * D.tpAdd, D.tpCap);
@@ -728,7 +738,7 @@ function spawnFruit(spec) {
 
 function showBanner() {
   const cat = CATS[waveTarget];
-  elBannerWave.textContent = `第 ${wave} 波 · 目标分类`;
+  elBannerWave.textContent = `第 ${wave} / ${TOTAL_WAVES} 关 · 目标分类`;
   elBannerCat.textContent = `切掉：${cat.label}科目`;
   elBannerCat.style.color = cat.color;
   elBannerCat.style.boxShadow = `inset 0 0 0 2px ${cat.color}66`;
@@ -881,13 +891,14 @@ function update(dt) {
   }
   // 波结束检测：队列空且场上无整果
   if (state === 'playing' && !spawnQueue.length && !fruits.length && transitionTimer < 0) {
-    transitionTimer = 0.9;
     if (scoreWave < 20) {  // 波次奖励
       scoreWave = Math.min(20, scoreWave + 2);
       floaters.push({ x: W / 2, y: H * 0.32, text: '🌊 波次完成 +2', color: '#4dabf7', age: 0 });
     }
     score = scoreSlice + scoreCombo + scoreWave;
     updateHUD();
+    if (wave >= TOTAL_WAVES) endGame(true);  // 8 关全部完成 → 通关结算
+    else transitionTimer = 0.9;
   }
 
   // 水果下落
@@ -1179,6 +1190,7 @@ function startGame(d) {
   ensureAudio();
   score = 0; lives = 3; combo = 0; maxCombo = 0;
   correctCnt = 0; wrongCnt = 0; wave = 0;
+  waveCats = shuffle(CAT_KEYS);  // 每局重新洗牌，8 个分类各出现一次
   scoreSlice = 0; scoreCombo = 0; scoreWave = 0;
   fruits = []; halves = []; particles = []; floaters = []; trail = [];
   spawnQueue = []; transitionTimer = -1; shake = 0;
@@ -1191,17 +1203,22 @@ function startGame(d) {
   buildWave();
 }
 
-function endGame() {
+function endGame(win) {
   state = 'over';
   spawnQueue = [];
   elBanner.classList.add('hidden');
+  // 结算标题：通关 / 中途失败
+  $('over-title').textContent = win ? '🎉 通关成功！' : '本局结束';
+  $('over-tagline').textContent = win
+    ? `${TOTAL_WAVES} 个分类全部识别完成，你就是政府会计科目分类大师`
+    : '错题都是送分题，再来一局就记住了';
   // 填充结算
   $('r-score').textContent = score;
   $('r-combo').textContent = maxCombo;
   $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/60 · 连击奖励 ${scoreCombo}/20 · 波次奖励 ${scoreWave}/20`;
   const total = correctCnt + wrongCnt;
   $('r-acc').textContent = total ? Math.round(correctCnt / total * 100) + '%' : '—';
-  $('r-wave').textContent = wave;
+  $('r-wave').textContent = `${wave} / ${TOTAL_WAVES}`;
   // 错题表
   const tbody = $('mist-body');
   tbody.innerHTML = '';
