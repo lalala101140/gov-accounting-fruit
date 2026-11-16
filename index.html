@@ -196,7 +196,7 @@
 
 <!-- HUD -->
 <div id="hud" class="hidden">
-  <div class="hud-card">得分 <span id="score-num">0</span><span style="font-size:12px;color:#adb5bd"> /100</span><span id="combo-tag"></span><br><span id="hud-diff" style="font-size:12px;color:#adb5bd"></span></div>
+  <div class="hud-card">得分 <span id="score-num">0</span><span id="score-cap" style="font-size:12px;color:#adb5bd"> /100</span><span id="combo-tag"></span><br><span id="hud-diff" style="font-size:12px;color:#adb5bd"></span></div>
   <div class="hud-card" id="lives-row">
     <span id="lives">❤❤❤</span>
     <button id="btn-pause" title="暂停 (P)">⏸</button>
@@ -207,7 +207,7 @@
 <div id="banner" class="hidden">
   <div class="wave-line"></div>
   <div class="cat-line"></div>
-  <div class="sub-line">按住滑动，只切这一类的水果！</div>
+  <div class="sub-line" id="banner-sub">按住滑动，只切这一类的水果！</div>
 </div>
 
 <!-- 开始菜单 -->
@@ -223,9 +223,9 @@
       <input id="player-name" maxlength="12" placeholder="请输入昵称（必填）">
     </div>
     <div class="diff-row">
-      <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲<br>适合刚开始背科目</div></button>
-      <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度<br>熟悉后的挑战</div></button>
-      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">💀</div><div class="d-name">地狱</div><div class="d-desc">极速狂落<br>科目大师的考验</div></button>
+      <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲 · 通关满分 <b>80</b> 分<br>适合刚开始背科目</div></button>
+      <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度 · 通关满分 <b>90</b> 分<br>熟悉后的挑战</div></button>
+      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">💀</div><div class="d-name">地狱</div><div class="d-desc">极速狂落 · 通关满分 <b>100</b> 分<br>科目大师的考验</div></button>
     </div>
     <div id="diff-tip">👆 点击难度即刻开始</div>
     <div id="best-line"></div>
@@ -602,7 +602,7 @@ resize();
 let state = 'menu';          // menu | playing | over
 let paused = false;
 let score = 0, lives = 3, combo = 0, maxCombo = 0, correctCnt = 0, wrongCnt = 0;
-let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 100 分制：切对 60 / 连击 20 / 波次 20
+let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决定（简单 80 / 进阶 90 / 地狱 100）
 let wave = 0, waveTarget = null, waveCats = [];
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
@@ -613,13 +613,19 @@ let lastT = performance.now();
 
 /* ---------------- 难度参数 ---------------- */
 const DIFFS = {
-  easy:   { label: '🌿 简单', vyMin: 55,  vyMax: 95,  vyAdd: 6,  vyCap: 240, g: 55,  sway: 12,
+  easy:   { label: '🌿 简单', fullScore: 80,
+            sliceCap: 48, comboCap: 16, waveCap: 16,
+            vyMin: 55,  vyMax: 95,  vyAdd: 6,  vyCap: 240, g: 55,  sway: 12,
             countBase: 4, countDiv: 3, countCap: 7,  gapBase: 950, gapDec: 15, gapMin: 650,
             tpBase: .50, tpAdd: .01, tpCap: .60, bombWave: 6, bombBase: .04, bombAdd: .004, bombCap: .08 },
-  normal: { label: '🔥 进阶', vyMin: 80,  vyMax: 130, vyAdd: 10, vyCap: 380, g: 80,  sway: 22,
+  normal: { label: '🔥 进阶', fullScore: 90,
+            sliceCap: 54, comboCap: 18, waveCap: 18,
+            vyMin: 80,  vyMax: 130, vyAdd: 10, vyCap: 380, g: 80,  sway: 22,
             countBase: 5, countDiv: 2, countCap: 10, gapBase: 760, gapDec: 28, gapMin: 380,
             tpBase: .38, tpAdd: .02, tpCap: .55, bombWave: 3, bombBase: .05, bombAdd: .008, bombCap: .15 },
-  hell:   { label: '💀 地狱', vyMin: 130, vyMax: 180, vyAdd: 20, vyCap: 480, g: 110, sway: 35,
+  hell:   { label: '💀 地狱', fullScore: 100,
+            sliceCap: 60, comboCap: 20, waveCap: 20,
+            vyMin: 130, vyMax: 180, vyAdd: 20, vyCap: 480, g: 110, sway: 35,
             countBase: 6, countDiv: 1.5, countCap: 13, gapBase: 560, gapDec: 30, gapMin: 200,
             tpBase: .34, tpAdd: .015, tpCap: .50, bombWave: 2, bombBase: .07, bombAdd: .01, bombCap: .20 },
 };
@@ -738,8 +744,10 @@ function spawnFruit(spec) {
 
 function showBanner() {
   const cat = CATS[waveTarget];
+  const D = DIFFS[diff];
   elBannerWave.textContent = `第 ${wave} / ${TOTAL_WAVES} 关 · 目标分类`;
   elBannerCat.textContent = `切掉：${cat.label}科目`;
+  $('banner-sub').textContent = `通关满分 ${D.fullScore} 分 · 按住滑动，只切这一类的水果！`;
   elBannerCat.style.color = cat.color;
   elBannerCat.style.boxShadow = `inset 0 0 0 2px ${cat.color}66`;
   elBanner.classList.remove('pop');
@@ -812,12 +820,12 @@ function onFruitSliced(f, a, b) {
   if (f.cat === waveTarget) {
     correctCnt++; combo++;
     maxCombo = Math.max(maxCombo, combo);
-    if (scoreSlice < 60) {  // 切对得分，60 分封顶
-      scoreSlice = Math.min(60, scoreSlice + 2);
+    if (scoreSlice < D.sliceCap) {  // 切对得分，封顶由难度决定
+      scoreSlice = Math.min(D.sliceCap, scoreSlice + 2);
       floaters.push({ x: f.x, y: f.y - f.r, text: '+2', color: '#69db7c', age: 0 });
     }
-    if (combo % 5 === 0 && scoreCombo < 20) {  // 每 5 连击奖励，20 分封顶
-      scoreCombo = Math.min(20, scoreCombo + 2);
+    if (combo % 5 === 0 && scoreCombo < D.comboCap) {  // 每 5 连击奖励，封顶由难度决定
+      scoreCombo = Math.min(D.comboCap, scoreCombo + 2);
       floaters.push({ x: f.x, y: f.y - f.r - 26, text: `🔥 ${combo} 连击 +2`, color: '#ffd43b', age: 0 });
     }
     score = scoreSlice + scoreCombo + scoreWave;
@@ -891,8 +899,8 @@ function update(dt) {
   }
   // 波结束检测：队列空且场上无整果
   if (state === 'playing' && !spawnQueue.length && !fruits.length && transitionTimer < 0) {
-    if (scoreWave < 20) {  // 波次奖励
-      scoreWave = Math.min(20, scoreWave + 2);
+    if (scoreWave < D.waveCap) {  // 波次奖励
+      scoreWave = Math.min(D.waveCap, scoreWave + 2);
       floaters.push({ x: W / 2, y: H * 0.32, text: '🌊 波次完成 +2', color: '#4dabf7', age: 0 });
     }
     score = scoreSlice + scoreCombo + scoreWave;
@@ -1170,6 +1178,7 @@ requestAnimationFrame(loop);
 /* ---------------- HUD ---------------- */
 function updateHUD() {
   elScore.textContent = score;
+  $('score-cap').textContent = ` / ${DIFFS[diff].fullScore}`;
   elCombo.textContent = combo >= 2 ? `${combo} 连击！` : '';
   elLives.textContent = '❤'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
 }
@@ -1207,15 +1216,19 @@ function endGame(win) {
   state = 'over';
   spawnQueue = [];
   elBanner.classList.add('hidden');
+  // 通关时按难度补齐波次奖励，让总分恰好等于该难度的 fullScore
+  if (win) scoreWave = DIFFS[diff].waveCap;
+  score = scoreSlice + scoreCombo + scoreWave;
+  const D = DIFFS[diff];
   // 结算标题：通关 / 中途失败
-  $('over-title').textContent = win ? '🎉 通关成功！' : '本局结束';
+  $('over-title').textContent = win ? `🎉 通关成功！（满分 ${D.fullScore} 分）` : '本局结束';
   $('over-tagline').textContent = win
     ? `${TOTAL_WAVES} 个分类全部识别完成，你就是政府会计科目分类大师`
     : '错题都是送分题，再来一局就记住了';
   // 填充结算
-  $('r-score').textContent = score;
+  $('r-score').textContent = `${score} / ${D.fullScore}`;
   $('r-combo').textContent = maxCombo;
-  $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/60 · 连击奖励 ${scoreCombo}/20 · 波次奖励 ${scoreWave}/20`;
+  $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/${D.sliceCap} · 连击奖励 ${scoreCombo}/${D.comboCap} · 波次奖励 ${scoreWave}/${D.waveCap}`;
   const total = correctCnt + wrongCnt;
   $('r-acc').textContent = total ? Math.round(correctCnt / total * 100) + '%' : '—';
   $('r-wave').textContent = `${wave} / ${TOTAL_WAVES}`;
