@@ -804,6 +804,7 @@ function trySlice(a, b) {
 }
 
 function onFruitSliced(f, a, b) {
+  const D = DIFFS[diff];
   spawnHalves(f, a, b);
   spawnJuice(f.x, f.y, f.look.juice[0], f.look.juice[1], 18);
   // 果汁溅在菜板上留下渍痕，慢慢淡去
@@ -884,6 +885,7 @@ function spawnJuice(x, y, c1, c2, n) {
 
 /* ---------------- 更新 ---------------- */
 function update(dt) {
+  const D = DIFFS[diff];
   // 出怪
   if (spawnQueue.length) {
     spawnTimer -= dt;
@@ -910,7 +912,6 @@ function update(dt) {
   }
 
   // 水果下落
-  const D = DIFFS[diff];
   for (let i = fruits.length - 1; i >= 0; i--) {
     const f = fruits[i];
     f.vy = Math.min(f.vy + D.g * dt, D.vyCap);
