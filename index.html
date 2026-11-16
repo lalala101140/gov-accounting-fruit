@@ -92,12 +92,10 @@
   .diff-card .d-icon { font-size: 26px; }
   .diff-card .d-name { font-size: 17px; font-weight: 800; letter-spacing: 3px; margin: 4px 0 3px; }
   .diff-card .d-desc { font-size: 11.5px; color: #a1785a; line-height: 1.5; }
-  .diff-card.easy:hover   { box-shadow: 0 8px 24px rgba(105,219,124,.35); border-color: #69db7c; }
+  .diff-card.simple:hover { box-shadow: 0 8px 24px rgba(105,219,124,.35); border-color: #69db7c; }
   .diff-card.normal:hover { box-shadow: 0 8px 24px rgba(77,171,247,.35); border-color: #4dabf7; }
-  .diff-card.hell:hover   { box-shadow: 0 8px 24px rgba(255,107,107,.4);  border-color: #ff6b6b; }
-  .diff-card.easy .d-name   { color: #2f9e44; }
+  .diff-card.simple .d-name { color: #2f9e44; }
   .diff-card.normal .d-name { color: #1971c2; }
-  .diff-card.hell .d-name   { color: #e03131; }
   #diff-tip { font-size: 12px; color: #a1785a; margin: 6px 0 16px; }
 
   .btn-main {
@@ -223,9 +221,8 @@
       <input id="player-name" maxlength="12" placeholder="请输入昵称（必填）">
     </div>
     <div class="diff-row">
-      <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲 · 通关满分 <b>80</b> 分<br>适合刚开始背科目</div></button>
-      <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度 · 通关满分 <b>90</b> 分<br>熟悉后的挑战</div></button>
-      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">⚡</div><div class="d-name">困难</div><div class="d-desc">极速狂落 · 通关满分 <b>100</b> 分<br>科目大师的考验</div></button>
+      <button class="diff-card simple"   data-diff="simple"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲 · 通关满分 <b>90</b> 分<br>必须全切对才能拿满分</div></button>
+      <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度 · 通关满分 <b>100</b> 分<br>必须全切对才能拿满分</div></button>
     </div>
     <div id="diff-tip">👆 点击难度即刻开始</div>
     <div id="best-line"></div>
@@ -602,8 +599,10 @@ resize();
 let state = 'menu';          // menu | playing | over
 let paused = false;
 let score = 0, lives = 3, combo = 0, maxCombo = 0, correctCnt = 0, wrongCnt = 0;
-let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决定（简单 80 / 进阶 90 / 困难 100）
+let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决定（简单 90 / 进阶 100）
 let wave = 0, waveTarget = null, waveCats = [];
+const MAX_LIVES = 5;                          // 最多 5 条命（药水可加）
+let potionWaves = [];                          // 本局放药水的波次（每局 2 瓶）
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
 let transitionTimer = -1;    // 波间过渡倒计时，-1 表示不在过渡
@@ -613,23 +612,19 @@ let lastT = performance.now();
 
 /* ---------------- 难度参数 ---------------- */
 const DIFFS = {
-  easy:   { label: '🌿 简单', fullScore: 80,
-            sliceCap: 48, comboCap: 16, waveCap: 16,
+  simple: { label: '🌿 简单', fullScore: 90,
+            sliceCap: 60, comboCap: 14, waveCap: 16,
             vyMin: 55,  vyMax: 95,  vyAdd: 6,  vyCap: 240, g: 55,  sway: 12,
             countBase: 4, countDiv: 3, countCap: 7,  gapBase: 950, gapDec: 15, gapMin: 650,
             tpBase: .50, tpAdd: .01, tpCap: .60, bombWave: 6, bombBase: .04, bombAdd: .004, bombCap: .08 },
-  normal: { label: '🔥 进阶', fullScore: 90,
-            sliceCap: 54, comboCap: 18, waveCap: 18,
+  normal: { label: '🔥 进阶', fullScore: 100,
+            sliceCap: 68, comboCap: 16, waveCap: 16,
             vyMin: 80,  vyMax: 130, vyAdd: 10, vyCap: 380, g: 80,  sway: 22,
             countBase: 5, countDiv: 2, countCap: 10, gapBase: 760, gapDec: 28, gapMin: 380,
             tpBase: .38, tpAdd: .02, tpCap: .55, bombWave: 3, bombBase: .05, bombAdd: .008, bombCap: .15 },
-  hell:   { label: '⚡ 困难', fullScore: 100,
-            sliceCap: 60, comboCap: 20, waveCap: 20,
-            vyMin: 130, vyMax: 180, vyAdd: 20, vyCap: 480, g: 110, sway: 35,
-            countBase: 6, countDiv: 1.5, countCap: 13, gapBase: 560, gapDec: 30, gapMin: 200,
-            tpBase: .34, tpAdd: .015, tpCap: .50, bombWave: 2, bombBase: .07, bombAdd: .01, bombCap: .20 },
 };
-let diff = localStorage.getItem('gov-fruit-diff') || 'normal';
+let diff = localStorage.getItem('gov-fruit-diff') || 'simple';
+if (!DIFFS[diff]) diff = 'simple';  // 清除已移除难度的残留
 
 const bestKey = () => 'gov-fruit-best-' + diff;
 function getBest() { return +(localStorage.getItem(bestKey()) || 0); }
@@ -712,6 +707,7 @@ function buildWave() {
     }
   }
   // 打乱出场顺序
+  if (potionWaves.includes(wave)) list.push('potion');  // 加一瓶药水，最后一起打乱
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [list[i], list[j]] = [list[j], list[i]];
@@ -725,16 +721,20 @@ function buildWave() {
 
 function spawnFruit(spec) {
   const D = DIFFS[diff];
-  const narrow = W < 520;  // 竖屏窄屏：水果缩小，避免拥挤
-  const r = spec === 'bomb' ? (narrow ? 40 : 46) : (narrow ? rand(38, 45) : rand(44, 52));
+  const narrow = W < 520;
+  const r = spec === 'bomb' ? (narrow ? 40 : 46)
+          : spec === 'potion' ? (narrow ? 38 : 44)
+          : (narrow ? rand(38, 45) : rand(44, 52));
   const f = {
     x: rand(r + 20, W - r - 20), y: -r - 10,
     vx: rand(-40, 40),
     vy: Math.min(rand(D.vyMin, D.vyMax) + wave * D.vyAdd, D.vyCap),
-    r, sliced: false, bomb: spec === 'bomb',
+    r, sliced: false,
+    bomb: spec === 'bomb',
+    potion: spec === 'potion',
     phase: rand(0, Math.PI * 2), born: performance.now(),
   };
-  if (!f.bomb) {
+  if (!f.bomb && !f.potion) {
     const t = randomTopicOf(spec);
     f.topic = t.n; f.cat = t.c;
     f.look = pick(FRUITS);
@@ -798,7 +798,9 @@ function trySlice(a, b) {
     if (f.sliced) continue;
     if (distToSeg(f, a, b) < f.r - 6) {
       fruits.splice(i, 1);
-      f.bomb ? onBombSliced(f) : onFruitSliced(f, a, b);
+      if (f.bomb) onBombSliced(f);
+      else if (f.potion) onPotionSliced(f, a, b);
+      else onFruitSliced(f, a, b);
     }
   }
 }
@@ -847,6 +849,15 @@ function onBombSliced(f) {
   floaters.push({ x: f.x, y: f.y - f.r, text: '💥 砰！', color: '#ff922b', age: 0 });
   sndBomb();
   loseLife();
+  updateHUD();
+}
+
+function onPotionSliced(f, a, b) {
+  spawnJuice(f.x, f.y, '#4dabf7', '#5c7cfa', 24);
+  lives = Math.min(MAX_LIVES, lives + 1);
+  floaters.push({ x: f.x, y: f.y - f.r, text: '💧 药水 +1 ❤', color: '#5c7cfa', age: 0 });
+  // 药水不掉 combo，不影响正确率，只是救了一条命
+  playSlice();
   updateHUD();
 }
 
@@ -921,7 +932,7 @@ function update(dt) {
     if (f.x > W - f.r) { f.x = W - f.r; f.vx = -Math.abs(f.vx); }
     if (f.y - f.r > H) {  // 掉出屏幕
       fruits.splice(i, 1);
-      if (!f.bomb && f.cat === waveTarget) {  // 漏切目标科目 → 记错题
+      if (!f.bomb && !f.potion && f.cat === waveTarget) {  // 漏切目标科目 → 记错题
         mistakes.push({ n: f.topic, c: f.cat, act: 'missed' });
         combo = 0;
         floaters.push({ x: Math.min(Math.max(f.x, 60), W - 60), y: H - 60, text: `${f.topic} 漏切了`, color: '#868e96', age: 0 });
@@ -960,6 +971,34 @@ function update(dt) {
 }
 
 /* ---------------- 绘制 ---------------- */
+function drawPotion(r) {
+  // 药水瓶身
+  const bw = r * 1.1, bh = r * 1.4;
+  const bx = -bw / 2, by = -bh * 0.05;
+  const g = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+  g.addColorStop(0, '#74c0fc'); g.addColorStop(.5, '#4dabf7'); g.addColorStop(1, '#1971c2');
+  ctx.fillStyle = g;
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2;
+  // 圆角瓶身
+  rr(ctx, bx, by, bw, bh, r * 0.28);
+  ctx.fill(); ctx.stroke();
+  // 瓶口
+  const nw = bw * 0.42, nh = bh * 0.32;
+  ctx.fillStyle = '#868e96';
+  ctx.fillRect(-nw / 2, -nh - 2, nw, nh);
+  ctx.strokeRect(-nw / 2, -nh - 2, nw, nh);
+  // 液体高光
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  rr(ctx, bx + bw * 0.15, by + bh * 0.1, bw * 0.18, bh * 0.6, r * 0.12);
+  ctx.fill();
+  // 瓶身 emoji
+  ctx.font = `${r * 0.55}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 2;
+  ctx.strokeText('❤', 0, by + bh * 0.55);
+  ctx.fillText('❤', 0, by + bh * 0.55);
+}
+
 function drawFruit(f) {
   const sq = 1 + Math.sin((performance.now() - f.born) / 220) * 0.04;  // 轻微呼吸
   const r = f.r * sq;
@@ -983,6 +1022,8 @@ function drawFruit(f) {
     ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#fff';
     ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 3;
     ctx.strokeText('炸弹', 0, r * 0.62); ctx.fillText('炸弹', 0, r * 0.62);
+  } else if (f.potion) {
+    drawPotion(r);
   } else {
     f.look.draw(r);
     // 科目文字（最多两行）
@@ -1181,7 +1222,7 @@ function updateHUD() {
   elScore.textContent = score;
   $('score-cap').textContent = ` / ${DIFFS[diff].fullScore}`;
   elCombo.textContent = combo >= 2 ? `${combo} 连击！` : '';
-  elLives.textContent = '❤'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+  elLives.textContent = '❤'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, MAX_LIVES - lives));
 }
 
 /* ---------------- 流程控制 ---------------- */
@@ -1201,6 +1242,9 @@ function startGame(d) {
   score = 0; lives = 3; combo = 0; maxCombo = 0;
   correctCnt = 0; wrongCnt = 0; wave = 0;
   waveCats = shuffle(CAT_KEYS);  // 每局重新洗牌，8 个分类各出现一次
+  // 本局 2 瓶药水，随机放到第 2~8 关中，避免第 1 关就出
+  const pool = [1,2,3,4,5,6,7,8];
+  potionWaves = shuffle(pool).slice(0, 2);
   scoreSlice = 0; scoreCombo = 0; scoreWave = 0;
   fruits = []; halves = []; particles = []; floaters = []; trail = [];
   spawnQueue = []; transitionTimer = -1; shake = 0;
@@ -1291,7 +1335,7 @@ function goHome() {
 }
 
 function showBestOnMenu() {
-  $('best-line').textContent = ['easy', 'normal', 'hell']
+  $('best-line').textContent = ['simple', 'normal']
     .map(k => `${DIFFS[k].label} ${+(localStorage.getItem('gov-fruit-best-' + k) || 0)}`)
     .join(' · ');
 }
