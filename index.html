@@ -215,7 +215,8 @@
     <div class="tagline">切水果 × 会计科目分类复习</div>
     <div class="rules-simple">
       🎯 共 8 关，每关指定一个分类（不重复），请切掉<b>属于该类</b>的科目<br>
-      🏆 总分 <b>100</b> 分 · 切错或切到炸弹会扣命
+      🏆 简单满分 <b>90</b> 分 · 进阶满分 <b>100</b> 分，<b>全部切对</b>才能拿满分<br>
+      ❤ 初始 3 条命 · 切错或切到炸弹扣 1 命 · 每局有 <b>2 瓶药水</b>随机掉落，切到 +1 命
     </div>
     <div class="name-row">
       <input id="player-name" maxlength="12" placeholder="请输入昵称（必填）">
@@ -603,6 +604,7 @@ let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决�
 let wave = 0, waveTarget = null, waveCats = [];
 const MAX_LIVES = 5;                          // 最多 5 条命（药水可加）
 let potionWaves = [];                          // 本局放药水的波次（每局 2 瓶）
+let totalTargets = 0;                          // 本局目标水果总数（用于判定"全部切对"）
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
 let transitionTimer = -1;    // 波间过渡倒计时，-1 表示不在过渡
@@ -713,6 +715,7 @@ function buildWave() {
     [list[i], list[j]] = [list[j], list[i]];
   }
   spawnQueue = list;
+  totalTargets += list.filter(s => s === waveTarget).length;  // 累计本局目标水果数
   spawnTimer = 0.4;
   spawnGap = Math.max(D.gapMin, D.gapBase - wave * D.gapDec);
   showBanner();
@@ -1042,6 +1045,7 @@ function drawFruit(f) {
 }
 
 function drawHalf(h) {
+  if (!h.look) return;  // 防御：没有果肉数据的残片直接跳过，避免渲染报错
   ctx.save();
   ctx.translate(h.x, h.y);
   ctx.rotate(h.rot);
@@ -1245,6 +1249,7 @@ function startGame(d) {
   // 本局 2 瓶药水，随机放到第 2~8 关中，避免第 1 关就出
   const pool = [1,2,3,4,5,6,7,8];
   potionWaves = shuffle(pool).slice(0, 2);
+  totalTargets = 0;
   scoreSlice = 0; scoreCombo = 0; scoreWave = 0;
   fruits = []; halves = []; particles = []; floaters = []; trail = [];
   spawnQueue = []; transitionTimer = -1; shake = 0;
@@ -1261,19 +1266,28 @@ function endGame(win) {
   state = 'over';
   spawnQueue = [];
   elBanner.classList.add('hidden');
-  // 通关时按难度补齐波次奖励，让总分恰好等于该难度的 fullScore
-  if (win) scoreWave = DIFFS[diff].waveCap;
-  score = scoreSlice + scoreCombo + scoreWave;
+  // 通关时按难度补齐波次奖励；只有"全部切对"（不漏切、不切错）才补满切对分和连击分
   const D = DIFFS[diff];
-  // 结算标题：通关 / 中途失败
-  $('over-title').textContent = win ? `🎉 通关成功！（满分 ${D.fullScore} 分）` : '本局结束';
-  $('over-tagline').textContent = win
-    ? `${TOTAL_WAVES} 个分类全部识别完成，你就是政府会计科目分类大师`
+  const perfect = win && totalTargets > 0 && correctCnt >= totalTargets && wrongCnt === 0;
+  if (win) {
+    scoreWave = D.waveCap;
+    if (perfect) { scoreSlice = D.sliceCap; scoreCombo = D.comboCap; }
+  }
+  score = scoreSlice + scoreCombo + scoreWave;
+  if (win && !perfect) score = Math.min(score, D.fullScore - 2);  // 非全切对最多差 2 分，拿不到满分
+  // 结算标题：完美通关 / 通关 / 中途失败
+  $('over-title').textContent = perfect ? `🏆 完美通关！（${D.fullScore} 分满分）`
+                              : win ? `🎉 通关成功（未全切对，最高 ${D.fullScore - 2} 分）`
+                              : '本局结束';
+  $('over-tagline').textContent = perfect
+    ? `${TOTAL_WAVES} 个分类全部切对，你就是政府会计科目分类大师`
+    : win ? `通关了！但漏切/切错让你与 ${D.fullScore} 分擦肩而过，全切对才能拿满分`
     : '错题都是送分题，再来一局就记住了';
   // 填充结算
   $('r-score').textContent = `${score} / ${D.fullScore}`;
   $('r-combo').textContent = maxCombo;
-  $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/${D.sliceCap} · 连击奖励 ${scoreCombo}/${D.comboCap} · 波次奖励 ${scoreWave}/${D.waveCap}`;
+  $('r-detail').textContent = `本局明细：切对得分 ${scoreSlice}/${D.sliceCap} · 连击奖励 ${scoreCombo}/${D.comboCap} · 波次奖励 ${scoreWave}/${D.waveCap}`
+    + (perfect ? ' · ✅ 全部切对' : ` · ⚠️ 漏切 ${totalTargets - correctCnt > 0 ? totalTargets - correctCnt : 0} 个 / 切错 ${wrongCnt} 次`);
   const total = correctCnt + wrongCnt;
   $('r-acc').textContent = total ? Math.round(correctCnt / total * 100) + '%' : '—';
   $('r-wave').textContent = `${wave} / ${TOTAL_WAVES}`;
@@ -1307,7 +1321,7 @@ function endGame(win) {
   // 玩家名 + 本机排行榜
   const name = ($('player-name').value.trim() || localStorage.getItem('gov-fruit-name') || '无名玩家').slice(0, 12);
   $('r-player').innerHTML = `玩家：<b>${name.replace(/</g, '&lt;')}</b> · ${DIFFS[diff].label}难度`;
-  const DIF_COLOR = { easy: '#2f9e44', normal: '#1971c2', hell: '#e03131' };
+  const DIF_COLOR = { simple: '#2f9e44', normal: '#1971c2' };
   const lb = JSON.parse(localStorage.getItem('gov-fruit-lb') || '[]');
   const rec = { n: name, s: score, d: diff, t: Date.now() };
   lb.push(rec);
