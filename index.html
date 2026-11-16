@@ -225,7 +225,7 @@
     <div class="diff-row">
       <button class="diff-card easy"   data-diff="easy"><div class="d-icon">🌿</div><div class="d-name">简单</div><div class="d-desc">慢速悠闲 · 通关满分 <b>80</b> 分<br>适合刚开始背科目</div></button>
       <button class="diff-card normal" data-diff="normal"><div class="d-icon">🔥</div><div class="d-name">进阶</div><div class="d-desc">标准速度 · 通关满分 <b>90</b> 分<br>熟悉后的挑战</div></button>
-      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">💀</div><div class="d-name">地狱</div><div class="d-desc">极速狂落 · 通关满分 <b>100</b> 分<br>科目大师的考验</div></button>
+      <button class="diff-card hell"   data-diff="hell"><div class="d-icon">⚡</div><div class="d-name">困难</div><div class="d-desc">极速狂落 · 通关满分 <b>100</b> 分<br>科目大师的考验</div></button>
     </div>
     <div id="diff-tip">👆 点击难度即刻开始</div>
     <div id="best-line"></div>
@@ -602,7 +602,7 @@ resize();
 let state = 'menu';          // menu | playing | over
 let paused = false;
 let score = 0, lives = 3, combo = 0, maxCombo = 0, correctCnt = 0, wrongCnt = 0;
-let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决定（简单 80 / 进阶 90 / 地狱 100）
+let scoreSlice = 0, scoreCombo = 0, scoreWave = 0;  // 三项封顶由难度决定（简单 80 / 进阶 90 / 困难 100）
 let wave = 0, waveTarget = null, waveCats = [];
 let fruits = [], halves = [], particles = [], floaters = [], trail = [];
 let spawnQueue = [], spawnTimer = 0, spawnGap = 700;
@@ -623,7 +623,7 @@ const DIFFS = {
             vyMin: 80,  vyMax: 130, vyAdd: 10, vyCap: 380, g: 80,  sway: 22,
             countBase: 5, countDiv: 2, countCap: 10, gapBase: 760, gapDec: 28, gapMin: 380,
             tpBase: .38, tpAdd: .02, tpCap: .55, bombWave: 3, bombBase: .05, bombAdd: .008, bombCap: .15 },
-  hell:   { label: '💀 地狱', fullScore: 100,
+  hell:   { label: '⚡ 困难', fullScore: 100,
             sliceCap: 60, comboCap: 20, waveCap: 20,
             vyMin: 130, vyMax: 180, vyAdd: 20, vyCap: 480, g: 110, sway: 35,
             countBase: 6, countDiv: 1.5, countCap: 13, gapBase: 560, gapDec: 30, gapMin: 200,
